@@ -2,7 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createOpencodeClient } from '@opencode-ai/sdk/v2';
 import * as gitService from './gitService';
-import { chooseBridgeGitGenerationModel, type BridgeGitGenerationPayloadModel } from './bridge-git-generation-model';
+import {
+  chooseBridgeGitGenerationModel,
+  pickCatalogGitGenerationFallback,
+  type BridgeGitGenerationPayloadModel,
+} from './bridge-git-generation-model';
 import type { BridgeContext, BridgeResponse } from './bridge';
 import { readMagicPromptOverrides } from './bridge-settings-runtime';
 import {
@@ -35,6 +39,11 @@ const BRIDGE_GIT_MODEL_CATALOG_CACHE_TTL_MS = 30 * 1000;
 
 let bridgeGitModelCatalogCache: Set<string> | null = null;
 let bridgeGitModelCatalogCacheAt = 0;
+
+export const resetBridgeGitModelCatalogCache = (): void => {
+  bridgeGitModelCatalogCache = null;
+  bridgeGitModelCatalogCacheAt = 0;
+};
 
 const sleep = (ms: number) => new Promise<void>((resolve) => {
   setTimeout(resolve, ms);
@@ -138,7 +147,8 @@ const resolveBridgeGitGenerationModel = async (
     return catalog.has(`${providerID}/${modelID}`);
   };
 
-  return chooseBridgeGitGenerationModel(payloadModel, settings, hasModel);
+  const catalogFallback = catalog ? pickCatalogGitGenerationFallback(catalog) : null;
+  return chooseBridgeGitGenerationModel(payloadModel, settings, hasModel, catalogFallback);
 };
 
 const extractTextFromMessageParts = (parts: unknown): string => {
@@ -231,7 +241,13 @@ const generateBridgeTextWithSessionFlow = async ({
           continue;
         }
         const info = message.info as Record<string, unknown> | undefined;
-        if (info?.role !== 'assistant' || info?.finish !== 'stop') {
+        if (!info || info.role !== 'assistant') {
+          continue;
+        }
+        if (info.finish === 'error') {
+          throw new Error(`Generation failed: ${formatBridgeSdkError(info.error)}`);
+        }
+        if (info.finish !== 'stop') {
           continue;
         }
 

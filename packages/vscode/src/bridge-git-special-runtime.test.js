@@ -33,10 +33,11 @@ mock.module('./bridge-settings-runtime', () => ({
   readMagicPromptOverrides: () => ({ version: 1, overrides: {} }),
 }));
 
-const { handleSpecialGitBridgeMessage } = await import('./bridge-git-special-runtime');
+const { handleSpecialGitBridgeMessage, resetBridgeGitModelCatalogCache } = await import('./bridge-git-special-runtime');
 
 describe('bridge git special runtime', () => {
   beforeEach(() => {
+    resetBridgeGitModelCatalogCache();
     gitService.getGitRangeFiles.mockReset();
     gitService.getGitRangeDiff.mockReset();
     gitService.getGitStatus.mockReset();
@@ -201,5 +202,74 @@ describe('bridge git special runtime', () => {
       error: 'No files provided to generate commit message',
     });
     expect(sdkClient.session.create).not.toHaveBeenCalled();
+  });
+
+  it('uses a catalog model when no request model is set and zen is absent', async () => {
+    sdkClient.v2.model.list.mockImplementation(async () => ({
+      data: [{ providerID: 'opencode', id: 'ling-3.0-flash-fin-free' }],
+      error: undefined,
+    }));
+    sdkClient.session.messages.mockImplementation(async () => ({
+      data: [{
+        info: { role: 'assistant', finish: 'stop' },
+        parts: [{ type: 'text', text: '{"subject":"feat: add scm generate","highlights":[]}' }],
+      }],
+      error: undefined,
+    }));
+
+    const response = await handleSpecialGitBridgeMessage({
+      id: '4',
+      type: 'api:git/commit-message',
+      payload: { directory: '/repo', files: ['src/a.ts'] },
+    }, {
+      manager: {
+        getApiUrl: () => 'http://opencode.test',
+        getOpenCodeAuthHeaders: () => ({}),
+      },
+    }, {
+      readSettings: () => ({}),
+      execGit: mock(),
+    });
+
+    expect(response?.success).toBe(true);
+    expect(sdkClient.session.promptAsync).toHaveBeenCalledWith(expect.objectContaining({
+      model: { providerID: 'opencode', modelID: 'ling-3.0-flash-fin-free' },
+    }), expect.anything());
+  });
+
+  it('fails commit generation when the session finishes with an error', async () => {
+    sdkClient.session.messages.mockImplementation(async () => ({
+      data: [{
+        info: { role: 'assistant', finish: 'error', error: 'Provider not found' },
+        parts: [],
+      }],
+      error: undefined,
+    }));
+
+    const response = await handleSpecialGitBridgeMessage({
+      id: '5',
+      type: 'api:git/commit-message',
+      payload: {
+        directory: '/repo',
+        files: ['src/a.ts'],
+        providerId: 'anthropic',
+        modelId: 'claude-sonnet-4-5',
+      },
+    }, {
+      manager: {
+        getApiUrl: () => 'http://opencode.test',
+        getOpenCodeAuthHeaders: () => ({}),
+      },
+    }, {
+      readSettings: () => ({}),
+      execGit: mock(),
+    });
+
+    expect(response).toEqual({
+      id: '5',
+      type: 'api:git/commit-message',
+      success: false,
+      error: 'Generation failed: Provider not found',
+    });
   });
 });

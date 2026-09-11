@@ -1,6 +1,10 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BRIDGE_ZEN_DEFAULT_MODEL, chooseBridgeGitGenerationModel } from './bridge-git-generation-model';
+import {
+  BRIDGE_ZEN_DEFAULT_MODEL,
+  chooseBridgeGitGenerationModel,
+  pickCatalogGitGenerationFallback,
+} from './bridge-git-generation-model';
 
 const catalogOf = (...refs: string[]) => {
   const set = new Set(refs);
@@ -82,5 +86,44 @@ describe('chooseBridgeGitGenerationModel', () => {
       chooseBridgeGitGenerationModel({}, {}, none),
       { providerID: 'zen', modelID: BRIDGE_ZEN_DEFAULT_MODEL },
     );
+  });
+
+  test('uses a catalog model when zen is not in the catalog', () => {
+    const fallback = { providerID: 'opencode', modelID: 'ling-3.0-flash-fin-free' };
+    const choice = chooseBridgeGitGenerationModel(
+      {},
+      {},
+      catalogOf('opencode/ling-3.0-flash-fin-free'),
+      fallback,
+    );
+    assert.deepEqual(choice, fallback);
+  });
+
+  test('keeps zen when the catalog has it, even if a catalog fallback exists', () => {
+    const choice = chooseBridgeGitGenerationModel(
+      {},
+      {},
+      catalogOf(`zen/${BRIDGE_ZEN_DEFAULT_MODEL}`, 'opencode/ling-3.0-flash-fin-free'),
+      { providerID: 'opencode', modelID: 'ling-3.0-flash-fin-free' },
+    );
+    assert.deepEqual(choice, { providerID: 'zen', modelID: BRIDGE_ZEN_DEFAULT_MODEL });
+  });
+});
+
+describe('pickCatalogGitGenerationFallback', () => {
+  test('prefers an OpenCode free model over paid catalog entries', () => {
+    assert.deepEqual(
+      pickCatalogGitGenerationFallback([
+        'anthropic/claude-sonnet-4',
+        'opencode/big-pickle',
+        'opencode/muse-spark-1.3-contributor-free',
+        'opencode/ling-3.0-flash-fin-free',
+      ]),
+      { providerID: 'opencode', modelID: 'ling-3.0-flash-fin-free' },
+    );
+  });
+
+  test('returns null for an empty catalog', () => {
+    assert.equal(pickCatalogGitGenerationFallback([]), null);
   });
 });
