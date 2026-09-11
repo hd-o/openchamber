@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 const gitService = {
   getGitRangeFiles: mock(),
   getGitRangeDiff: mock(),
+  getGitStatus: mock(),
+  getGitDiff: mock(),
+  getGitLog: mock(),
 };
 
 const sdkClient = {
@@ -26,6 +29,9 @@ const rawFetch = mock(async () => {
 
 mock.module('./gitService', () => gitService);
 mock.module('@opencode-ai/sdk/v2', () => ({ createOpencodeClient }));
+mock.module('./bridge-settings-runtime', () => ({
+  readMagicPromptOverrides: () => ({ version: 1, overrides: {} }),
+}));
 
 const { handleSpecialGitBridgeMessage } = await import('./bridge-git-special-runtime');
 
@@ -33,6 +39,9 @@ describe('bridge git special runtime', () => {
   beforeEach(() => {
     gitService.getGitRangeFiles.mockReset();
     gitService.getGitRangeDiff.mockReset();
+    gitService.getGitStatus.mockReset();
+    gitService.getGitDiff.mockReset();
+    gitService.getGitLog.mockReset();
     sdkClient.v2.model.list.mockReset();
     sdkClient.session.create.mockReset();
     sdkClient.session.promptAsync.mockReset();
@@ -45,6 +54,17 @@ describe('bridge git special runtime', () => {
     createOpencodeClient.mockImplementation(() => sdkClient);
     gitService.getGitRangeFiles.mockImplementation(async () => ['src/a.ts']);
     gitService.getGitRangeDiff.mockImplementation(async () => ({ diff: 'diff --git a/src/a.ts b/src/a.ts\n+new line' }));
+    gitService.getGitStatus.mockImplementation(async () => ({
+      files: [{ path: 'src/a.ts', index: 'M', working_dir: ' ' }],
+    }));
+    gitService.getGitDiff.mockImplementation(async () => ({
+      diff: 'diff --git a/src/a.ts b/src/a.ts\n+new line',
+    }));
+    gitService.getGitLog.mockImplementation(async () => ({
+      all: [{ message: 'feat: previous change' }],
+      latest: null,
+      total: 1,
+    }));
     sdkClient.v2.model.list.mockImplementation(async () => ({
       data: [{ providerID: 'anthropic', id: 'claude-sonnet-4-5' }],
       error: undefined,
@@ -112,5 +132,74 @@ describe('bridge git special runtime', () => {
       limit: 10,
     }, expect.objectContaining({ signal: expect.any(AbortSignal) }));
     expect(sdkClient.session.delete).toHaveBeenCalledWith({ sessionID: 'ses_1' }, expect.objectContaining({ signal: expect.any(AbortSignal) }));
+  });
+
+  it('generates commit messages through the OpenCode SDK session flow', async () => {
+    sdkClient.session.messages.mockImplementation(async () => ({
+      data: [{
+        info: { role: 'assistant', finish: 'stop' },
+        parts: [{ type: 'text', text: '{"subject":"feat: add scm generate","highlights":["SCM title button"]}' }],
+      }],
+      error: undefined,
+    }));
+
+    const response = await handleSpecialGitBridgeMessage({
+      id: '2',
+      type: 'api:git/commit-message',
+      payload: {
+        directory: '/repo',
+        files: ['src/a.ts'],
+        providerId: 'anthropic',
+        modelId: 'claude-sonnet-4-5',
+      },
+    }, {
+      manager: {
+        getApiUrl: () => 'http://opencode.test',
+        getOpenCodeAuthHeaders: () => ({ Authorization: 'Bearer test' }),
+      },
+    }, {
+      readSettings: () => ({}),
+      execGit: mock(),
+    });
+
+    expect(response).toEqual({
+      id: '2',
+      type: 'api:git/commit-message',
+      success: true,
+      data: {
+        message: {
+          subject: 'feat: add scm generate',
+          highlights: ['SCM title button'],
+        },
+      },
+    });
+    expect(sdkClient.session.create).toHaveBeenCalled();
+    expect(sdkClient.session.delete).toHaveBeenCalled();
+  });
+
+  it('fails commit generation when no files are available', async () => {
+    gitService.getGitStatus.mockImplementation(async () => ({ files: [] }));
+
+    const response = await handleSpecialGitBridgeMessage({
+      id: '3',
+      type: 'api:git/commit-message',
+      payload: { directory: '/repo' },
+    }, {
+      manager: {
+        getApiUrl: () => 'http://opencode.test',
+        getOpenCodeAuthHeaders: () => ({}),
+      },
+    }, {
+      readSettings: () => ({}),
+      execGit: mock(),
+    });
+
+    expect(response).toEqual({
+      id: '3',
+      type: 'api:git/commit-message',
+      success: false,
+      error: 'No files provided to generate commit message',
+    });
+    expect(sdkClient.session.create).not.toHaveBeenCalled();
   });
 });
