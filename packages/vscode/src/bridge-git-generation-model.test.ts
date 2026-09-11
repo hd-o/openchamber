@@ -112,11 +112,22 @@ describe('chooseBridgeGitGenerationModel', () => {
 });
 
 describe('pickCatalogGitGenerationFallback', () => {
-  test('prefers an OpenCode free model over paid catalog entries', () => {
+  test('prefers OpenCode big-pickle over alphabetical free ids that can hang', () => {
     assert.deepEqual(
       pickCatalogGitGenerationFallback([
         'anthropic/claude-sonnet-4',
+        'opencode/deepseek-v4-flash-free',
+        'opencode/ling-3.0-flash-fin-free',
         'opencode/big-pickle',
+      ]),
+      { providerID: 'opencode', modelID: 'big-pickle' },
+    );
+  });
+
+  test('prefers contributor/fin free models when big-pickle is absent', () => {
+    assert.deepEqual(
+      pickCatalogGitGenerationFallback([
+        'opencode/deepseek-v4-flash-free',
         'opencode/muse-spark-1.3-contributor-free',
         'opencode/ling-3.0-flash-fin-free',
       ]),

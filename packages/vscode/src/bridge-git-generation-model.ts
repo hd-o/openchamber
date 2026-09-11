@@ -38,7 +38,8 @@ const compareCatalogChoice = (
 
 /**
  * When zen is missing from the live catalog, pick a model that actually exists.
- * Prefer OpenCode's free models so a machine with no provider keys still works.
+ * Prefer OpenCode's default (`big-pickle`), then known-good free ids, then any
+ * catalog row. Alphabetical `*-free` first is wrong: some free ids hang.
  */
 export const pickCatalogGitGenerationFallback = (
   refs: Iterable<string>,
@@ -49,14 +50,20 @@ export const pickCatalogGitGenerationFallback = (
     if (parsed) models.push(parsed);
   }
   if (models.length === 0) return null;
-  models.sort(compareCatalogChoice);
-  const opencodeFree = models.find((model) => (
-    model.providerID === 'opencode' && model.modelID.includes('free')
-  ));
-  if (opencodeFree) return opencodeFree;
-  const opencode = models.find((model) => model.providerID === 'opencode');
-  if (opencode) return opencode;
+  models.sort((left, right) => {
+    const byRank = catalogFallbackRank(left) - catalogFallbackRank(right);
+    if (byRank !== 0) return byRank;
+    return compareCatalogChoice(left, right);
+  });
   return models[0];
+};
+
+const catalogFallbackRank = (model: BridgeGitGenerationModelChoice): number => {
+  if (model.providerID !== 'opencode') return 4;
+  if (model.modelID === 'big-pickle') return 0;
+  if (model.modelID.includes('contributor-free') || model.modelID.includes('fin-free')) return 1;
+  if (model.modelID.includes('free')) return 2;
+  return 3;
 };
 
 export type GitGenerationCatalogRowInput = {
