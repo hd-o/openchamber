@@ -206,7 +206,10 @@ describe('bridge git special runtime', () => {
 
   it('uses a catalog model when no request model is set and zen is absent', async () => {
     sdkClient.v2.model.list.mockImplementation(async () => ({
-      data: [{ providerID: 'opencode', id: 'ling-3.0-flash-fin-free' }],
+      data: {
+        location: { directory: '/repo' },
+        data: [{ providerID: 'opencode', id: 'ling-3.0-flash-fin-free' }],
+      },
       error: undefined,
     }));
     sdkClient.session.messages.mockImplementation(async () => ({

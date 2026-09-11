@@ -4,8 +4,11 @@ import { createOpencodeClient } from '@opencode-ai/sdk/v2';
 import * as gitService from './gitService';
 import {
   chooseBridgeGitGenerationModel,
+  catalogModelRefsFromListPayload,
   pickCatalogGitGenerationFallback,
   type BridgeGitGenerationPayloadModel,
+  type GitGenerationCatalogListPayload,
+  type GitGenerationCatalogRowInput,
 } from './bridge-git-generation-model';
 import type { BridgeContext, BridgeResponse } from './bridge';
 import { readMagicPromptOverrides } from './bridge-settings-runtime';
@@ -101,26 +104,11 @@ const fetchBridgeGitModelCatalog = async (
   }
 
   const client = createBridgeGitClient(apiUrl, authHeaders);
-  const payload = unwrapBridgeSdkData(
+  const payload = unwrapBridgeSdkData<GitGenerationCatalogListPayload | GitGenerationCatalogRowInput[]>(
     await client.v2.model.list(undefined, { signal: AbortSignal.timeout(8_000) }),
     'model.list'
   );
-  const refs = new Set<string>();
-  if (Array.isArray(payload)) {
-    for (const item of payload) {
-      if (!item || typeof item !== 'object') {
-        continue;
-      }
-      const record = item as Record<string, unknown>;
-      const providerID = typeof record.providerID === 'string' ? record.providerID.trim() : '';
-      const modelID = typeof record.id === 'string'
-        ? record.id.trim()
-        : (typeof record.modelID === 'string' ? record.modelID.trim() : '');
-      if (providerID && modelID) {
-        refs.add(`${providerID}/${modelID}`);
-      }
-    }
-  }
+  const refs = new Set(catalogModelRefsFromListPayload(payload));
 
   bridgeGitModelCatalogCache = refs;
   bridgeGitModelCatalogCacheAt = now;

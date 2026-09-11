@@ -180,7 +180,7 @@
         {
           "command": "openchamber.generateCommitMessage",
           "when": "scmProvider == git",
-          "group": "navigation"
+          "group": "navigation@0"
         }
       ],
       "comments/commentThread/context": [

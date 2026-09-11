@@ -2,6 +2,7 @@ import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BRIDGE_ZEN_DEFAULT_MODEL,
+  catalogModelRefsFromListPayload,
   chooseBridgeGitGenerationModel,
   pickCatalogGitGenerationFallback,
 } from './bridge-git-generation-model';
@@ -125,5 +126,27 @@ describe('pickCatalogGitGenerationFallback', () => {
 
   test('returns null for an empty catalog', () => {
     assert.equal(pickCatalogGitGenerationFallback([]), null);
+  });
+});
+
+describe('catalogModelRefsFromListPayload', () => {
+  test('reads the nested v2 { location, data } list used by the live SDK', () => {
+    assert.deepEqual(
+      catalogModelRefsFromListPayload({
+        location: { directory: '/repo' },
+        data: [
+          { id: 'ling-3.0-flash-fin-free', providerID: 'opencode' },
+          { id: 'claude-sonnet-4', providerID: 'anthropic' },
+        ],
+      }),
+      ['opencode/ling-3.0-flash-fin-free', 'anthropic/claude-sonnet-4'],
+    );
+  });
+
+  test('still accepts a bare array from tests and older unwraps', () => {
+    assert.deepEqual(
+      catalogModelRefsFromListPayload([{ providerID: 'opencode', id: 'big-pickle' }]),
+      ['opencode/big-pickle'],
+    );
   });
 });

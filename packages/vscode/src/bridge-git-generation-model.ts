@@ -59,6 +59,35 @@ export const pickCatalogGitGenerationFallback = (
   return models[0];
 };
 
+export type GitGenerationCatalogRowInput = {
+  providerID?: string;
+  id?: string;
+  modelID?: string;
+};
+
+export type GitGenerationCatalogListPayload = {
+  location?: { directory?: string };
+  data?: ReadonlyArray<GitGenerationCatalogRowInput>;
+};
+
+/**
+ * `client.v2.model.list` unwraps to `{ location, data: ModelV2Info[] }`.
+ * Older/mocked clients unwrap to the array itself. Empty catalog here would
+ * send zen/gpt-5-nano and hang on vanilla OpenCode.
+ */
+export const catalogModelRefsFromListPayload = (
+  payload: GitGenerationCatalogListPayload | ReadonlyArray<GitGenerationCatalogRowInput>,
+): string[] => {
+  const items = payload instanceof Array ? payload : payload.data ?? [];
+  const refs: string[] = [];
+  for (const item of items) {
+    const providerID = item.providerID?.trim() ?? '';
+    const modelID = item.id?.trim() || item.modelID?.trim() || '';
+    if (providerID && modelID) refs.push(`${providerID}/${modelID}`);
+  }
+  return refs;
+};
+
 // Bridge settings are the merged persisted dictionary; a value is a string
 // only when the stored file says so, hence the narrowing here.
 const readStringField = (settings: Record<string, unknown>, key: string): string => {
