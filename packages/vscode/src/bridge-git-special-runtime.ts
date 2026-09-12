@@ -18,8 +18,10 @@ import {
   buildCommitGenerationPrompt,
   formatRecentCommitSubjects,
   parseGeneratedCommitMessage,
+  commitPathUsesStagedDiff,
   selectCommitFilePaths,
   type GeneratedCommitMessage,
+  type GitStatusFileLike,
 } from './git-commit-message';
 
 type BridgeMessageInput = {
@@ -273,19 +275,21 @@ const collectRecentCommitSubjects = async (directory: string): Promise<string> =
 const collectSelectedFileDiffs = async (
   directory: string,
   files: string[],
+  statusFiles: GitStatusFileLike[],
   execGit: SpecialGitDeps['execGit'],
 ): Promise<string> => {
+  const statusByPath = new Map(statusFiles.map((file) => [file.path, file]));
   const limited = files.slice(0, COMMIT_DIFF_FILE_LIMIT);
   const chunks = await Promise.all(limited.map(async (filePath) => {
     try {
-      const [staged, unstaged] = await Promise.all([
-        gitService.getGitDiff(directory, filePath, true).catch(() => null),
-        gitService.getGitDiff(directory, filePath, false).catch(() => null),
-      ]);
-      const combined = [staged?.diff, unstaged?.diff]
-        .filter((diff): diff is string => typeof diff === 'string' && diff.trim().length > 0)
-        .join('\n');
-      if (combined.trim()) return combined;
+      if (commitPathUsesStagedDiff(statusByPath.get(filePath))) {
+        const staged = await gitService.getGitDiff(directory, filePath, true).catch(() => null);
+        if (typeof staged?.diff === 'string' && staged.diff.trim()) return staged.diff;
+        return `--- ${filePath} (no textual diff available)`;
+      }
+
+      const unstaged = await gitService.getGitDiff(directory, filePath, false).catch(() => null);
+      if (typeof unstaged?.diff === 'string' && unstaged.diff.trim()) return unstaged.diff;
 
       const noIndex = await execGit(
         ['diff', '--no-color', '--no-index', '--', nullDevicePath, filePath],
@@ -336,8 +340,8 @@ export const generateBridgeCommitMessage = async ({
   let selectedFiles = Array.isArray(files)
     ? files.map((file) => file.trim()).filter(Boolean)
     : [];
+  const status = await gitService.getGitStatus(directory, { mode: 'light' });
   if (selectedFiles.length === 0) {
-    const status = await gitService.getGitStatus(directory, { mode: 'light' });
     selectedFiles = selectCommitFilePaths(status.files);
   }
   if (selectedFiles.length === 0) {
@@ -346,7 +350,7 @@ export const generateBridgeCommitMessage = async ({
 
   const [recentCommits, diffs] = await Promise.all([
     collectRecentCommitSubjects(directory),
-    collectSelectedFileDiffs(directory, selectedFiles, execGit),
+    collectSelectedFileDiffs(directory, selectedFiles, status.files, execGit),
   ]);
   if (!diffs.trim()) {
     throw new Error('No diffs available for selected files');

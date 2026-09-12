@@ -35,5 +35,6 @@
   "OpenChamber: Generating commit message...": "OpenChamber: Generating commit message...",
   "OpenChamber: OpenCode is not ready": "OpenChamber: OpenCode is not ready",
   "OpenChamber: Commit message generation already in progress": "OpenChamber: Commit message generation already in progress",
+  "OpenChamber: Left your commit message unchanged": "OpenChamber: Left your commit message unchanged",
   "OpenChamber: Failed to generate commit message - {0}": "OpenChamber: Failed to generate commit message - {0}"
 }

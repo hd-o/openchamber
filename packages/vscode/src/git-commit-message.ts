@@ -7,7 +7,7 @@ export const COMMIT_DIFF_TOTAL_CHAR_LIMIT = 120_000;
 export const COMMIT_STYLE_SAMPLE_COUNT = 10;
 export const COMMIT_STYLE_SUBJECT_CHAR_LIMIT = 200;
 
-type GitStatusFileLike = {
+export type GitStatusFileLike = {
   path: string;
   index: string;
   working_dir: string;
@@ -49,6 +49,10 @@ Selected files:
 const isMeaningfulStatus = (value: string): boolean => {
   const token = value.trim();
   return token.length > 0 && token !== '?' && token !== '!';
+};
+
+export const commitPathUsesStagedDiff = (file: GitStatusFileLike | undefined): boolean => {
+  return Boolean(file && isMeaningfulStatus(file.index));
 };
 
 export const selectCommitFilePaths = (files: GitStatusFileLike[]): string[] => {

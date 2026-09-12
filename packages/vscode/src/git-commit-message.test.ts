@@ -1,6 +1,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  commitPathUsesStagedDiff,
   formatCommitMessageForScm,
   parseGeneratedCommitMessage,
   selectCommitFilePaths,
@@ -17,6 +18,10 @@ describe('git-commit-message', () => {
       { path: 'unstaged.ts', index: ' ', working_dir: 'M' },
       { path: 'new.ts', index: '?', working_dir: '?' },
     ]), ['new.ts', 'unstaged.ts']);
+
+    assert.equal(commitPathUsesStagedDiff({ path: 'both.ts', index: 'M', working_dir: 'M' }), true);
+    assert.equal(commitPathUsesStagedDiff({ path: 'unstaged.ts', index: ' ', working_dir: 'M' }), false);
+    assert.equal(commitPathUsesStagedDiff({ path: 'new.ts', index: '?', working_dir: '?' }), false);
   });
 
   test('formats a subject and optional highlight body for the SCM input', () => {

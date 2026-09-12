@@ -22,9 +22,10 @@ Keep `bridge.ts` as a thin orchestration layer that delegates message handling t
 
 - `git-commit-message.ts`
   - Pure parse/format/file-selection helpers for commit generation (no `vscode` import).
+  - A path with a meaningful index status uses only the staged (`--cached`) diff. Extra working-tree hunks stay out of the prompt.
 
 - `scmCommitMessage.ts`
-  - Source Control title-bar command. Resolves the git repo, prefers staged files then unstaged/untracked, writes the result into `Repository.inputBox`.
+  - Source Control title-bar command. Resolves the git repo, prefers staged files then unstaged/untracked, writes the result into `Repository.inputBox` only if that box still matches the value captured when generation started.
 
 - `bridge-git-process-runtime.ts`
   - Git process execution and environment setup (`execGit`), including SSH agent socket resolution.

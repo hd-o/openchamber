@@ -123,6 +123,7 @@ export const registerGenerateCommitMessageCommand = (
             return;
           }
 
+          const inputBefore = repo.inputBox.value;
           const generated = await vscode.window.withProgress(
             {
               location: vscode.ProgressLocation.SourceControl,
@@ -145,6 +146,10 @@ export const registerGenerateCommitMessageCommand = (
             },
           );
 
+          if (repo.inputBox.value !== inputBefore) {
+            vscode.window.setStatusBarMessage(t('OpenChamber: Left your commit message unchanged'), 4000);
+            return;
+          }
           repo.inputBox.value = formatCommitMessageForScm(generated);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

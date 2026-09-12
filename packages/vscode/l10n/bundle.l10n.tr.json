@@ -35,5 +35,6 @@
   "OpenChamber: Generating commit message...": "OpenChamber: Commit mesajı oluşturuluyor...",
   "OpenChamber: OpenCode is not ready": "OpenChamber: OpenCode hazır değil",
   "OpenChamber: Commit message generation already in progress": "OpenChamber: Commit mesajı oluşturma zaten devam ediyor",
+  "OpenChamber: Left your commit message unchanged": "OpenChamber: Commit mesajınız değiştirilmedi",
   "OpenChamber: Failed to generate commit message - {0}": "OpenChamber: Commit mesajı oluşturulamadı - {0}"
 }

@@ -181,6 +181,50 @@ describe('bridge git special runtime', () => {
     expect(sdkClient.session.delete).toHaveBeenCalled();
   });
 
+  it('prompts only with the staged diff when a selected file also has unstaged hunks', async () => {
+    gitService.getGitStatus.mockImplementation(async () => ({
+      files: [{ path: 'src/a.ts', index: 'M', working_dir: 'M' }],
+    }));
+    gitService.getGitDiff.mockImplementation(async (_directory, _filePath, staged) => ({
+      diff: staged
+        ? 'diff --git a/src/a.ts b/src/a.ts\n+staged line'
+        : 'diff --git a/src/a.ts b/src/a.ts\n+unstaged line',
+    }));
+    sdkClient.session.messages.mockImplementation(async () => ({
+      data: [{
+        info: { role: 'assistant', finish: 'stop' },
+        parts: [{ type: 'text', text: '{"subject":"feat: add scm generate","highlights":[]}' }],
+      }],
+      error: undefined,
+    }));
+
+    const response = await handleSpecialGitBridgeMessage({
+      id: '2b',
+      type: 'api:git/commit-message',
+      payload: {
+        directory: '/repo',
+        files: ['src/a.ts'],
+        providerId: 'anthropic',
+        modelId: 'claude-sonnet-4-5',
+      },
+    }, {
+      manager: {
+        getApiUrl: () => 'http://opencode.test',
+        getOpenCodeAuthHeaders: () => ({ Authorization: 'Bearer test' }),
+      },
+    }, {
+      readSettings: () => ({}),
+      execGit: mock(),
+    });
+
+    expect(response?.success).toBe(true);
+    expect(gitService.getGitDiff).toHaveBeenCalledWith('/repo', 'src/a.ts', true);
+    expect(gitService.getGitDiff).not.toHaveBeenCalledWith('/repo', 'src/a.ts', false);
+    const promptText = sdkClient.session.promptAsync.mock.calls[0][0].parts[0].text;
+    expect(promptText).toContain('+staged line');
+    expect(promptText).not.toContain('+unstaged line');
+  });
+
   it('fails commit generation when no files are available', async () => {
     gitService.getGitStatus.mockImplementation(async () => ({ files: [] }));
 
