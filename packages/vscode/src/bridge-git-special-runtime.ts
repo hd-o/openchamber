@@ -8,7 +8,6 @@ import {
   pickCatalogGitGenerationFallback,
   type BridgeGitGenerationPayloadModel,
   type GitGenerationCatalogListPayload,
-  type GitGenerationCatalogRowInput,
 } from './bridge-git-generation-model';
 import type { BridgeContext, BridgeResponse } from './bridge';
 import { readMagicPromptOverrides } from './bridge-settings-runtime';
@@ -104,7 +103,7 @@ const fetchBridgeGitModelCatalog = async (
   }
 
   const client = createBridgeGitClient(apiUrl, authHeaders);
-  const payload = unwrapBridgeSdkData<GitGenerationCatalogListPayload | GitGenerationCatalogRowInput[]>(
+  const payload = unwrapBridgeSdkData<GitGenerationCatalogListPayload>(
     await client.v2.model.list(undefined, { signal: AbortSignal.timeout(8_000) }),
     'model.list'
   );

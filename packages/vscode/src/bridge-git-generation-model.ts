@@ -4,9 +4,10 @@
 //
 // Order: the request's explicit model, then the user's small-model override
 // from OpenChamber settings (the same setting every other utility generation in
-// the product uses), then zen when the catalog has it, then a catalog model
-// (OpenCode free models first). Vanilla OpenCode installs often have no zen
-// provider; sending zen/gpt-5-nano there hangs until the generation timeout.
+// the product uses), then zen when the catalog has it, then a catalog model.
+// Vanilla OpenCode has no zen provider. Sending zen/gpt-5-nano there hangs
+// until the generation timeout. The catalog fallback is OpenCode's default
+// (`big-pickle`), then any other `opencode/*` row, then the first catalog row.
 
 export const BRIDGE_ZEN_DEFAULT_MODEL = 'gpt-5-nano';
 
@@ -38,8 +39,8 @@ const compareCatalogChoice = (
 
 /**
  * When zen is missing from the live catalog, pick a model that actually exists.
- * Prefer OpenCode's default (`big-pickle`), then known-good free ids, then any
- * catalog row. Alphabetical `*-free` first is wrong: some free ids hang.
+ * Vanilla OpenCode's default is `opencode/big-pickle`. Some other `*-free` ids
+ * accept prompt_async and never finish, so do not rank by "free" in the name.
  */
 export const pickCatalogGitGenerationFallback = (
   refs: Iterable<string>,
@@ -50,23 +51,17 @@ export const pickCatalogGitGenerationFallback = (
     if (parsed) models.push(parsed);
   }
   if (models.length === 0) return null;
-  models.sort((left, right) => {
-    const byRank = catalogFallbackRank(left) - catalogFallbackRank(right);
-    if (byRank !== 0) return byRank;
-    return compareCatalogChoice(left, right);
-  });
-  return models[0];
+
+  const bigPickle = models.find((model) => (
+    model.providerID === 'opencode' && model.modelID === 'big-pickle'
+  ));
+  if (bigPickle) return bigPickle;
+
+  models.sort(compareCatalogChoice);
+  return models.find((model) => model.providerID === 'opencode') ?? models[0];
 };
 
-const catalogFallbackRank = (model: BridgeGitGenerationModelChoice): number => {
-  if (model.providerID !== 'opencode') return 4;
-  if (model.modelID === 'big-pickle') return 0;
-  if (model.modelID.includes('contributor-free') || model.modelID.includes('fin-free')) return 1;
-  if (model.modelID.includes('free')) return 2;
-  return 3;
-};
-
-export type GitGenerationCatalogRowInput = {
+type GitGenerationCatalogRowInput = {
   providerID?: string;
   id?: string;
   modelID?: string;
@@ -79,13 +74,13 @@ export type GitGenerationCatalogListPayload = {
 
 /**
  * `client.v2.model.list` unwraps to `{ location, data: ModelV2Info[] }`.
- * Older/mocked clients unwrap to the array itself. Empty catalog here would
- * send zen/gpt-5-nano and hang on vanilla OpenCode.
+ * Treating that object as a missing catalog sends zen/gpt-5-nano and hangs
+ * on vanilla OpenCode.
  */
 export const catalogModelRefsFromListPayload = (
-  payload: GitGenerationCatalogListPayload | ReadonlyArray<GitGenerationCatalogRowInput>,
+  payload: GitGenerationCatalogListPayload,
 ): string[] => {
-  const items = payload instanceof Array ? payload : payload.data ?? [];
+  const items = payload.data ?? [];
   const refs: string[] = [];
   for (const item of items) {
     const providerID = item.providerID?.trim() ?? '';

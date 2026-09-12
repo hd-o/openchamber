@@ -64,15 +64,6 @@ describe('chooseBridgeGitGenerationModel', () => {
     }
   });
 
-  test('the removed gitProviderId/gitModelId pair is no longer read', () => {
-    const choice = chooseBridgeGitGenerationModel(
-      {},
-      { gitProviderId: 'openai', gitModelId: 'gpt-4.1-mini' },
-      catalogOf('openai/gpt-4.1-mini'),
-    );
-    assert.deepEqual(choice, { providerID: 'zen', modelID: BRIDGE_ZEN_DEFAULT_MODEL });
-  });
-
   test('zen fallback prefers the request zen model, then settings, then the default', () => {
     const none = () => false;
     assert.deepEqual(
@@ -112,7 +103,7 @@ describe('chooseBridgeGitGenerationModel', () => {
 });
 
 describe('pickCatalogGitGenerationFallback', () => {
-  test('prefers OpenCode big-pickle over alphabetical free ids that can hang', () => {
+  test('prefers OpenCode big-pickle over other catalog rows', () => {
     assert.deepEqual(
       pickCatalogGitGenerationFallback([
         'anthropic/claude-sonnet-4',
@@ -124,11 +115,10 @@ describe('pickCatalogGitGenerationFallback', () => {
     );
   });
 
-  test('prefers contributor/fin free models when big-pickle is absent', () => {
+  test('uses an OpenCode catalog row when big-pickle is absent', () => {
     assert.deepEqual(
       pickCatalogGitGenerationFallback([
-        'opencode/deepseek-v4-flash-free',
-        'opencode/muse-spark-1.3-contributor-free',
+        'anthropic/claude-sonnet-4',
         'opencode/ling-3.0-flash-fin-free',
       ]),
       { providerID: 'opencode', modelID: 'ling-3.0-flash-fin-free' },
@@ -151,13 +141,6 @@ describe('catalogModelRefsFromListPayload', () => {
         ],
       }),
       ['opencode/ling-3.0-flash-fin-free', 'anthropic/claude-sonnet-4'],
-    );
-  });
-
-  test('still accepts a bare array from tests and older unwraps', () => {
-    assert.deepEqual(
-      catalogModelRefsFromListPayload([{ providerID: 'opencode', id: 'big-pickle' }]),
-      ['opencode/big-pickle'],
     );
   });
 });

@@ -67,7 +67,10 @@ describe('bridge git special runtime', () => {
       total: 1,
     }));
     sdkClient.v2.model.list.mockImplementation(async () => ({
-      data: [{ providerID: 'anthropic', id: 'claude-sonnet-4-5' }],
+      data: {
+        location: { directory: '/repo' },
+        data: [{ providerID: 'anthropic', id: 'claude-sonnet-4-5' }],
+      },
       error: undefined,
     }));
     sdkClient.session.create.mockImplementation(async () => ({

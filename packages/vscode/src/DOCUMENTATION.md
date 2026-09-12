@@ -17,7 +17,7 @@ Keep `bridge.ts` as a thin orchestration layer that delegates message handling t
 
 - `bridge-git-special-runtime.ts`
   - Specialized Git flows (`commit-message`, `pr-description`, `conflict-details`) and generation helpers.
-  - Generation model choice lives in `bridge-git-generation-model.ts`: request model first, then the user's small-model override (`smallModelUseDefault === false` plus `smallModelOverride` as `provider/model`) when the catalog has it, then zen when the catalog has it, then an OpenCode catalog model (`big-pickle`, then contributor/fin free ids). Vanilla installs with no zen provider must not be sent `zen/gpt-5-nano`. The old `gitProviderId`/`gitModelId` pair is no longer read.
+  - Generation model choice lives in `bridge-git-generation-model.ts`: request model first, then the user's small-model override (`smallModelUseDefault === false` plus `smallModelOverride` as `provider/model`) when the catalog has it, then zen when the catalog has it, then an OpenCode catalog model (`big-pickle`, then any other `opencode/*` row). Vanilla installs with no zen provider must not be sent `zen/gpt-5-nano`. The old `gitProviderId`/`gitModelId` pair is no longer read.
   - Commit message generation reuses the same throwaway `"Git Generation"` OpenCode session as PR text. Prompt templates stay aligned with `git.commit.generate.*` in `packages/ui/src/lib/magicPrompts.ts`, including on-disk magic-prompt overrides.
 
 - `git-commit-message.ts`
