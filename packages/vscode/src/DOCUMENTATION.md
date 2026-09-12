@@ -25,7 +25,7 @@ Keep `bridge.ts` as a thin orchestration layer that delegates message handling t
   - A path with a meaningful index status uses only the staged (`--cached`) diff. Extra working-tree hunks stay out of the prompt.
 
 - `scmCommitMessage.ts`
-  - Source Control title-bar command. Resolves the git repo, prefers staged files then unstaged/untracked, writes the result into `Repository.inputBox` only if that box still matches the value captured when generation started.
+  - Source Control title-bar command. Resolves the git repo, prefers staged files then unstaged/untracked, writes the result into `Repository.inputBox` only if that box still matches the value captured when generation started. The control uses the smaller `icon-scm*.svg` pair so the cube sits closer to the neighboring Git action glyphs.
 
 - `bridge-git-process-runtime.ts`
   - Git process execution and environment setup (`execGit`), including SSH agent socket resolution.
