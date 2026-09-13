@@ -8,7 +8,7 @@ import { getGitStatus } from './gitService';
 import type { API as GitAPI, GitExtension, Repository } from './git.d';
 import type { OpenCodeManager } from './opencode';
 
-const t = vscode.l10n.t;
+const localize = vscode.l10n.t;
 const OPENCODE_WAIT_MS = 30_000;
 
 let inFlight = false;
@@ -46,8 +46,8 @@ const pickRepository = async (
       repo,
     })),
     {
-      placeHolder: t('Select a repository'),
-      title: t('OpenChamber: Generate Commit Message'),
+      placeHolder: localize('Select a repository'),
+      title: localize('OpenChamber: Generate Commit Message'),
     },
   );
   return picked?.repo;
@@ -67,7 +67,7 @@ const waitForOpenCodeApiUrl = async (manager: OpenCodeManager): Promise<string> 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       disposable.dispose();
-      reject(new Error(t('OpenChamber: OpenCode is not ready')));
+      reject(new Error(localize('OpenChamber: OpenCode is not ready')));
     }, OPENCODE_WAIT_MS);
 
     const disposable = manager.onStatusChange((status, error) => {
@@ -82,7 +82,7 @@ const waitForOpenCodeApiUrl = async (manager: OpenCodeManager): Promise<string> 
       if (status === 'error') {
         clearTimeout(timeout);
         disposable.dispose();
-        reject(new Error(error || t('OpenChamber: OpenCode is not ready')));
+        reject(new Error(error || localize('OpenChamber: OpenCode is not ready')));
       }
     });
   });
@@ -97,20 +97,20 @@ export const registerGenerateCommitMessageCommand = (
       'openchamber.generateCommitMessage',
       async (sourceControl?: vscode.SourceControl) => {
         if (inFlight) {
-          vscode.window.setStatusBarMessage(t('OpenChamber: Commit message generation already in progress'), 2000);
+          vscode.window.setStatusBarMessage(localize('OpenChamber: Commit message generation already in progress'), 2000);
           return;
         }
         inFlight = true;
         try {
           const git = await getGitApi();
           if (!git) {
-            vscode.window.showWarningMessage(t('OpenChamber: Git extension not found'));
+            vscode.window.showWarningMessage(localize('OpenChamber: Git extension not found'));
             return;
           }
 
           const repo = await pickRepository(git, sourceControl);
           if (!repo) {
-            vscode.window.showWarningMessage(t('OpenChamber: No Git repository found'));
+            vscode.window.showWarningMessage(localize('OpenChamber: No Git repository found'));
             return;
           }
 
@@ -119,7 +119,7 @@ export const registerGenerateCommitMessageCommand = (
           const status = await getGitStatus(directory, { mode: 'light' });
           const files = selectCommitFilePaths(status.files);
           if (files.length === 0) {
-            vscode.window.showInformationMessage(t('OpenChamber: No changes to generate a commit message for'));
+            vscode.window.showInformationMessage(localize('OpenChamber: No changes to generate a commit message for'));
             return;
           }
 
@@ -127,7 +127,7 @@ export const registerGenerateCommitMessageCommand = (
           const generated = await vscode.window.withProgress(
             {
               location: vscode.ProgressLocation.SourceControl,
-              title: t('OpenChamber: Generating commit message...'),
+              title: localize('OpenChamber: Generating commit message...'),
               cancellable: false,
             },
             async () => {
@@ -147,13 +147,13 @@ export const registerGenerateCommitMessageCommand = (
           );
 
           if (repo.inputBox.value !== inputBefore) {
-            vscode.window.setStatusBarMessage(t('OpenChamber: Left your commit message unchanged'), 4000);
+            vscode.window.setStatusBarMessage(localize('OpenChamber: Left your commit message unchanged'), 4000);
             return;
           }
           repo.inputBox.value = formatCommitMessageForScm(generated);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          vscode.window.showErrorMessage(t('OpenChamber: Failed to generate commit message - {0}', message));
+          vscode.window.showErrorMessage(localize('OpenChamber: Failed to generate commit message - {0}', message));
         } finally {
           inFlight = false;
         }
