@@ -48,7 +48,7 @@ describe('chooseBridgeGitGenerationModel', () => {
         { smallModelUseDefault: useDefault, smallModelOverride: 'openai/gpt-4.1-mini' },
         hasModel,
       );
-      assert.deepEqual(choice, { providerID: 'zen', modelID: BRIDGE_ZEN_DEFAULT_MODEL });
+      assert.deepEqual(choice, { providerID: 'opencode', modelID: 'big-pickle' });
     }
   });
 
@@ -60,23 +60,23 @@ describe('chooseBridgeGitGenerationModel', () => {
         { smallModelUseDefault: false, smallModelOverride: override },
         hasModel,
       );
-      assert.deepEqual(choice, { providerID: 'zen', modelID: BRIDGE_ZEN_DEFAULT_MODEL });
+      assert.deepEqual(choice, { providerID: 'opencode', modelID: 'big-pickle' });
     }
   });
 
-  test('zen fallback prefers the request zen model, then settings, then the default', () => {
+  test('uses OpenCode big-pickle when zen is absent and no catalog fallback is given', () => {
     const none = () => false;
     assert.deepEqual(
       chooseBridgeGitGenerationModel({ zenModel: ' gpt-5-mini ' }, { zenModel: 'other' }, none),
-      { providerID: 'zen', modelID: 'gpt-5-mini' },
+      { providerID: 'opencode', modelID: 'big-pickle' },
     );
     assert.deepEqual(
       chooseBridgeGitGenerationModel({}, { zenModel: 'other' }, none),
-      { providerID: 'zen', modelID: 'other' },
+      { providerID: 'opencode', modelID: 'big-pickle' },
     );
     assert.deepEqual(
       chooseBridgeGitGenerationModel({}, {}, none),
-      { providerID: 'zen', modelID: BRIDGE_ZEN_DEFAULT_MODEL },
+      { providerID: 'opencode', modelID: 'big-pickle' },
     );
   });
 
@@ -141,6 +141,15 @@ describe('catalogModelRefsFromListPayload', () => {
         ],
       }),
       ['opencode/ling-3.0-flash-fin-free', 'anthropic/claude-sonnet-4'],
+    );
+  });
+
+  test('also accepts a bare model array from an unwrapped SDK list', () => {
+    assert.deepEqual(
+      catalogModelRefsFromListPayload([
+        { id: 'big-pickle', providerID: 'opencode' },
+      ]),
+      ['opencode/big-pickle'],
     );
   });
 });

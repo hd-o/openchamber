@@ -77,12 +77,24 @@ export type GitGenerationCatalogListPayload = {
  * Treating that object as a missing catalog sends zen/gpt-5-nano and hangs
  * on vanilla OpenCode.
  */
+const catalogRowsFromListPayload = (
+  payload: GitGenerationCatalogListPayload | readonly GitGenerationCatalogRowInput[],
+): ReadonlyArray<GitGenerationCatalogRowInput> => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (!('data' in payload)) {
+    return [];
+  }
+  const rows = payload.data;
+  return Array.isArray(rows) ? rows : [];
+};
+
 export const catalogModelRefsFromListPayload = (
-  payload: GitGenerationCatalogListPayload,
+  payload: GitGenerationCatalogListPayload | readonly GitGenerationCatalogRowInput[],
 ): string[] => {
-  const items = payload.data ?? [];
   const refs: string[] = [];
-  for (const item of items) {
+  for (const item of catalogRowsFromListPayload(payload)) {
     const providerID = item.providerID?.trim() ?? '';
     const modelID = item.id?.trim() || item.modelID?.trim() || '';
     if (providerID && modelID) refs.push(`${providerID}/${modelID}`);
@@ -143,5 +155,7 @@ export const chooseBridgeGitGenerationModel = (
   if (catalogFallback) {
     return catalogFallback;
   }
-  return zenChoice;
+  // Never send zen when the catalog did not confirm it. Vanilla OpenCode
+  // has no zen provider; prompt_async dies and the UI spins until timeout.
+  return { providerID: 'opencode', modelID: 'big-pickle' };
 };

@@ -287,6 +287,39 @@ describe('bridge git special runtime', () => {
     }), expect.anything());
   });
 
+  it('uses OpenCode big-pickle when the catalog lookup fails', async () => {
+    sdkClient.v2.model.list.mockImplementation(async () => ({
+      data: undefined,
+      error: new Error('model.list failed'),
+    }));
+    sdkClient.session.messages.mockImplementation(async () => ({
+      data: [{
+        info: { role: 'assistant', finish: 'stop' },
+        parts: [{ type: 'text', text: '{"subject":"feat: add scm generate","highlights":[]}' }],
+      }],
+      error: undefined,
+    }));
+
+    const response = await handleSpecialGitBridgeMessage({
+      id: '4b',
+      type: 'api:git/commit-message',
+      payload: { directory: '/repo', files: ['src/a.ts'] },
+    }, {
+      manager: {
+        getApiUrl: () => 'http://opencode.test',
+        getOpenCodeAuthHeaders: () => ({}),
+      },
+    }, {
+      readSettings: () => ({}),
+      execGit: mock(),
+    });
+
+    expect(response?.success).toBe(true);
+    expect(sdkClient.session.promptAsync).toHaveBeenCalledWith(expect.objectContaining({
+      model: { providerID: 'opencode', modelID: 'big-pickle' },
+    }), expect.anything());
+  });
+
   it('fails commit generation when the session finishes with an error', async () => {
     sdkClient.session.messages.mockImplementation(async () => ({
       data: [{
