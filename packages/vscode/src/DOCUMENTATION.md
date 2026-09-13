@@ -25,7 +25,7 @@ Keep `bridge.ts` as a thin orchestration layer that delegates message handling t
   - A path with a meaningful index status uses only the staged (`--cached`) diff. Extra working-tree hunks stay out of the prompt.
 
 - `scmCommitMessage.ts`
-  - Source Control title-bar command. Resolves the git repo, prefers staged files then unstaged/untracked, writes the result into `Repository.inputBox` only if that box still matches the value captured when generation started. The SCM title uses the built-in `$(sparkle)` ThemeIcon. File icons (SVG or PNG) are loaded as `vscode-managed-remote-resource` CSS backgrounds and fail on SSH/DevPod (`net::ERR_FAILED`, 0 bytes). Codicons ship with the workbench, so they paint next to Git's check and refresh.
+  - Source Control title-bar command. Resolves the git repo, prefers staged files then unstaged/untracked, writes the result into `Repository.inputBox` only if that box still matches the value captured when generation started. Light theme reuses `icon.svg`. Dark theme uses `icon-scm-titlebar.svg` (`#C5C5C5`) because that slot does not theme `currentColor` and `icon-titlebar.svg` is mint. A blank icon over SSH/DevPod is [vscode-remote-release#11686](https://github.com/microsoft/vscode-remote-release/issues/11686), not a missing asset.
 
 - `bridge-git-process-runtime.ts`
   - Git process execution and environment setup (`execGit`), including SSH agent socket resolution.

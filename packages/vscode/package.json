@@ -163,7 +163,10 @@
         "command": "openchamber.generateCommitMessage",
         "category": "OpenChamber",
         "title": "%command.generateCommitMessage.title%",
-        "icon": "$(sparkle)"
+        "icon": {
+          "light": "assets/icon.svg",
+          "dark": "assets/icon-scm-titlebar.svg"
+        }
       }
     ],
     "submenus": [
