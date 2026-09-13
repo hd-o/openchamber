@@ -164,7 +164,7 @@
         "category": "OpenChamber",
         "title": "%command.generateCommitMessage.title%",
         "icon": {
-          "light": "assets/icon-scm.svg",
+          "light": "assets/icon.svg",
           "dark": "assets/icon-scm-titlebar.svg"
         }
       }
